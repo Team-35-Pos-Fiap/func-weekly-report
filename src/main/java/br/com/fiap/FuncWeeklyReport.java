@@ -30,7 +30,7 @@ public class FuncWeeklyReport {
      */
     @FunctionName("func-weekly-report")
     public void run(
-        @TimerTrigger(name = "timerInfo", schedule = "0 */10 * * * *") String timerInfo,
+        @TimerTrigger(name = "timerInfo", schedule = "0 0 8 * * 0") String timerInfo,
         final ExecutionContext context
     ) throws Exception {
         context.getLogger().info(() -> "Timer triggered: " + timerInfo);

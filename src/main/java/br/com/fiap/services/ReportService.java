@@ -13,7 +13,7 @@ import br.com.fiap.db.PostgresClient;
 import br.com.fiap.models.WeeklyCourseReport;
 
 public class ReportService {
-    
+
     private final PostgresClient db;
 
     public ReportService(PostgresClient db) {
@@ -36,25 +36,23 @@ public class ReportService {
                     u.last_name,
                     u.email
                 FROM courses c
-                LEFT JOIN teachers t ON t.id = c.teacher_id
-                LEFT JOIN users u ON u.id = t.id
+                INNER JOIN teachers t ON t.id = c.teacher_id
+                INNER JOIN users u ON u.id = t.id
             """;
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(fetchCourses);
-             ResultSet rs = stmt.executeQuery()) {
+        try (Connection conn = db.getConnection(); PreparedStatement stmt = conn.prepareStatement(fetchCourses); ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
 
                 WeeklyCourseReport report = buildCourseReport(
-                    conn,
-                    rs.getObject("course_id", UUID.class),
-                    rs.getString("title"),
-                    rs.getObject("teacher_id", UUID.class),
-                    rs.getString("first_name") + " " + rs.getString("last_name"),
-                    rs.getString("email"),
-                    start,
-                    end
+                        conn,
+                        rs.getObject("course_id", UUID.class),
+                        rs.getString("title"),
+                        rs.getObject("teacher_id", UUID.class),
+                        rs.getString("first_name") + " " + rs.getString("last_name"),
+                        rs.getString("email"),
+                        start,
+                        end
                 );
 
                 reports.add(report);
@@ -65,27 +63,26 @@ public class ReportService {
     }
 
     private WeeklyCourseReport buildCourseReport(Connection conn,
-                                                 UUID courseId,
-                                                 String title,
-                                                 UUID teacherId,
-                                                 String teacherName,
-                                                 String teacherEmail,
-                                                 LocalDate start,
-                                                 LocalDate end) throws SQLException {
-
-//        String sql = """
-//            SELECT rating, comment, is_urgent
-//            FROM reviews
-//            WHERE course_id = ?
-//              AND created_at BETWEEN ? AND ?
-//        """;
+            UUID courseId,
+            String title,
+            UUID teacherId,
+            String teacherName,
+            String teacherEmail,
+            LocalDate start,
+            LocalDate end) throws SQLException {
 
         String sql = """
-                SELECT rating, comment, is_urgent
-                FROM reviews
-                WHERE course_id = ?
-            """;
+           SELECT rating, comment, is_urgent
+           FROM reviews
+           WHERE course_id = ?
+            AND created_at BETWEEN ? AND ?
+       """;
 
+        // String sql = """
+        //         SELECT rating, comment, is_urgent
+        //         FROM reviews
+        //         WHERE course_id = ?
+        //     """;
         int totalReviews = 0;
         int ratingSum = 0;
 
@@ -94,6 +91,8 @@ public class ReportService {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, courseId);
+            stmt.setObject(2, start);
+            stmt.setObject(3, end);
 
             ResultSet rs = stmt.executeQuery();
 
@@ -104,8 +103,9 @@ public class ReportService {
                 if (rs.getBoolean("is_urgent")) {
                     urgentCount++;
                     String c = rs.getString("comment");
-                    if (c != null && !c.isBlank())
+                    if (c != null && !c.isBlank()) {
                         urgentComments.add(c);
+                    }
                 }
             }
         }
@@ -113,11 +113,11 @@ public class ReportService {
         double avg = totalReviews == 0 ? 0 : (double) ratingSum / totalReviews;
 
         return new WeeklyCourseReport(
-            courseId, title,
-            teacherId, teacherName, teacherEmail,
-            start, end,
-            totalReviews, avg,
-            urgentCount, urgentComments
+                courseId, title,
+                teacherId, teacherName, teacherEmail,
+                start, end,
+                totalReviews, avg,
+                urgentCount, urgentComments
         );
     }
 }
